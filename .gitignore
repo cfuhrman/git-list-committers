@@ -1,0 +1,4 @@
+*~
+.ac-php-conf.json
+.phpunit.result.cache
+vendor/
