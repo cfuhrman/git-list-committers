@@ -5,7 +5,8 @@
         ]
     },
     "require": {
-        "laminas/laminas-text": "^2.9"
+        "laminas/laminas-text": "^2.9",
+        "c9s/getoptionkit": "^2.6"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5"
