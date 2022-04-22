@@ -34,6 +34,12 @@ class Committers
 
     const TABLE_COLUMN_WIDTHS          = [40, 30];
 
+    const GIT_CMD_SEARCH_PATHS         = [
+        '/usr/bin/git',
+        '/usr/local/bin/git',
+        '/usr/pkg/bin/git',
+    ];
+
     /**
      * @var array $branchCommitters
      */
@@ -42,7 +48,7 @@ class Committers
     /**
      * @var string $gitCommand
      */
-    protected $gitCommand = "git";
+    protected $gitCommand;
 
     /**
      * @var string $repositoryPath
@@ -74,24 +80,63 @@ class Committers
     public function __construct()
     {
         $this->repositoryPath = getcwd();
-        $this->gitCommand     = "/usr/bin/git";
+
+        // Figure out git command path
+        foreach (self::GIT_CMD_SEARCH_PATHS as $path) {
+            if (is_file($path) || is_link($path)) {
+                $this->gitCommand = $path;
+                break;
+            }
+        }
+
+        // If all else fails, try which(1)
+        if (empty($this->gitCommand)) {
+            $output     = [];
+            $resultCode = 0;
+
+            exec("which git", $output, $resultCode);
+
+            if (isset($output[0]) && is_executable($output[0])) {
+                $this->gitCommand = $output[0];
+            }
+        }
     }
 
+    /**
+     * Getter for git command
+     *
+     * @return string
+     */
     public function getGitCommand()
     {
         return $this->gitCommand;
     }
 
+    /**
+     * Getter for git repository path
+     *
+     * @return string
+     */
     public function getRepositoryPath()
     {
         return $this->repositoryPath;
     }
 
+    /**
+     * Getter for source branch
+     *
+     * @return string
+     */
     public function getSourceBranch()
     {
         return $this->sourceBranch;
     }
 
+    /**
+     * Getter for target branch
+     *
+     * @return string
+     */
     public function getTargetBranch()
     {
         return $this->targetBranch;
@@ -115,7 +160,7 @@ class Committers
             throw new \Exception("Command '$command' not found");
         }
 
-        $this->gitCommand =  $command;
+        $this->gitCommand = $command;
 
         return $this;
     }
@@ -143,7 +188,6 @@ class Committers
         }
 
         $this->repositoryPath = $path;
-        $this->gitCommand     = "/usr/bin/git";
 
         return $this;
     }
@@ -236,7 +280,7 @@ class Committers
         }
 
         foreach ($output as $committer) {
-            $logElements               = explode(self::GIT_CMD_LOG_OUTPUT_SEPARATOR, $committer);
+            $logElements                   = explode(self::GIT_CMD_LOG_OUTPUT_SEPARATOR, $committer);
             $committers[$logElements[2]][] = [
                 'hashish'     => $logElements[0],
                 'author_name' => $logElements[1],
