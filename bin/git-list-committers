@@ -1,0 +1,112 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * git-list-committers
+ *
+ * Copyright (c) 2022 Christopher M. Fuhrman
+ * All rights reserved
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under terms of the Simplified BSD License (also
+ * known as the "2-Clause License" or "FreeBSD License".)
+ *
+ * Created on Fri Apr 22 09:22:20 2022 PDT
+ */
+
+if (is_file(__DIR__.'/../autoload.php') === true) {
+    include_once __DIR__.'/../autoload.php';
+} elseif (is_file(__DIR__ . '/../vendor/autoload.php') === true) {
+    include_once __DIR__.'/../vendor/autoload.php';
+} else {
+    include_once 'Git/Committers.php';
+}
+
+use GetOptionKit\OptionCollection;
+use GetOptionKit\OptionParser;
+use GetOptionKit\OptionPrinter\ConsoleOptionPrinter;
+use Git\Committers;
+
+// Defaults
+$gitRepositoryPath = getcwd();
+$sourceBranch      = null;
+$targetBranch      = null;
+$gitCommand        = null;
+$params            = [];
+
+// Construct option specification
+$optSpecs = new OptionCollection();
+$printer  = new ConsoleOptionPrinter();
+
+$optSpecs->add('r|repository-path:', 'Path to Git Repository')
+         ->isa('string');
+$optSpecs->add('s|source-branch:', 'Source branch')
+         ->isa('string');
+$optSpecs->add('t|target-branch:', 'Target branch')
+         ->isa('string');
+$optSpecs->add('c|git-command:', 'Git Command (default /usr/bin/git)')
+         ->isa('string');
+
+try {
+    $optParser = new OptionParser($optSpecs);
+    $params    = $optParser->parse($argv);
+} catch (Exception $ex) {
+    echo $printer->render($optSpecs);
+    exit();
+}
+
+foreach ($params as $parameter) {
+    switch ($parameter->long) {
+        case 'repository-path': {
+            $gitRepositoryPath = $parameter->value;
+            break;
+        }
+        case 'source-branch': {
+            $sourceBranch = $parameter->value;
+            break;
+        }
+        case 'target-branch': {
+            $targetBranch = $parameter->value;
+            break;
+        }
+        case 'git-command': {
+            $gitCommand = $parameter->value;
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+// Validation
+if (empty($sourceBranch)) {
+    echo "ERROR: Source branch not defined.  Use --source-branch option" . PHP_EOL;
+    echo $printer->render($optSpecs);
+    exit();
+}
+
+if (empty($targetBranch)) {
+    echo "ERROR: Target branch not defined.  Use --target-branch option" . PHP_EOL;
+    echo $printer->render($optSpecs);
+    exit();
+}
+
+$committers = new Committers();
+
+if (is_file($gitCommand)) {
+    $committers->withGitCommand($gitCommand);
+}
+
+try {
+    $output = $committers->withGitRepositoryPath($gitRepositoryPath)
+                         ->withSourceBranch($sourceBranch)
+                         ->withTargetBranch($targetBranch)
+                         ->run();
+
+    echo $output . PHP_EOL;
+} catch (Exception $ex) {
+    printf("ERROR: %s : %s" . PHP_EOL, $ex->getMessage(), $ex->getTraceAsString());
+    echo $printer->render($optSpecs);
+}
+
+/** git-list-committers ends here */
